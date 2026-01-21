@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Policy Extractor</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --background-color: #f8fafc;
+            --card-background: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--card-background);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background-color: #eff6ff;
+        }
+
+        .upload-area.dragging {
+            border-color: var(--primary-color);
+            background-color: #dbeafe;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .error {
+            color: #ef4444;
+        }
+
+        .success {
+            color: #10b981;
+        }
+
+        .loader {
+            display: none;
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid var(--primary-color);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Policy Extractor</h1>
+        <p>Upload your insurance policy PDF to extract data</p>
+
+        <div class="upload-area" id="dropZone">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #cbd5e1;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <div style="margin-top: 1rem;">Click or drag file to upload</div>
+            <input type="file" id="fileInput" accept=".pdf">
+        </div>
+
+        <div class="file-info" id="fileInfo"></div>
+        
+        <button id="uploadBtn" class="btn" disabled>Extract Data</button>
+        
+        <div class="loader" id="loader"></div>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const statusDiv = document.getElementById('status');
+        const fileInfo = document.getElementById('fileInfo');
+        const loader = document.getElementById('loader');
+
+        // Drag and drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragging');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragging');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragging');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        let currentFile = null;
+
+        function handleFile(file) {
+            if (file.type !== 'application/pdf') {
+                showStatus('Please upload a PDF file', 'error');
+                return;
+            }
+            currentFile = file;
+            uploadBtn.disabled = false;
+            fileInfo.style.display = 'block';
+            fileInfo.textContent = `Selected: ${file.name}`;
+            showStatus('', '');
+        }
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+        }
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            uploadBtn.disabled = true;
+            loader.style.display = 'block';
+            showStatus('Processing... This may take a moment.', '');
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            try {
+                const response = await fetch('/extract/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Extraction failed');
+                }
+
+                // Initial success message
+                showStatus('Extraction complete! Downloading...', 'success');
+
+                // Get filename from header or default
+                const filenameHeader = response.headers.get('content-disposition');
+                let filename = 'extracted_data.xlsx';
+                if (filenameHeader && filenameHeader.includes('filename=')) {
+                    filename = filenameHeader.split('filename=')[1].replace(/['"]/g, '');
+                }
+
+                // Convert response to blob and download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                loader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

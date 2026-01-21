@@ -1,0 +1,43 @@
+# Project Overview: Insurance Policy Data Extractor
+
+## 1. Purpose (The "Why")
+The goal of this project is to **automate the extraction of structured data from insurance policy documents**.
+
+Processing insurance policies manually is time-consuming and error-prone due to:
+- **Varied Layouts**: Every insurer has a different format.
+- **Data Volume**: Extracting 15+ fields (Name, Dates, Vehicle Numbers, Amounts) takes time.
+- **Accuracy**: Humans can make typos during data entry.
+
+This solution uses **Generative AI (Vision LLMs)** to intelligently "read" the document like a human would, understanding context and layout to extract data accurately, regardless of the specific format.
+
+## 2. Technical Architecture (The "How")
+
+### Core Technology Stack
+- **Backend**: Python (FastAPI)
+- **Frontend**: React (Vite) - *Currently served via static files or separate dev server*
+- **AI/LLM**: Groq API (Model: `meta-llama/llama-4-maverick-17b-128e-instruct`)
+- **PDF Processing**: PyMuPDF (`fitz`)
+
+### Workflow description
+1.  **User Upload**: The user uploads a PDF file via the web interface.
+2.  **PDF Conversion**: The backend ([pdf_processor.py](file:///c:/Users/intern.it2/.gemini/antigravity/scratch/insurance_extraction_app/pdf_processor.py)) converts the PDF pages into high-resolution images.
+3.  **AI Extraction**:
+    - The images are encoded to Base64.
+    - They are sent to the **Groq API** ([llm_extractor.py](file:///c:/Users/intern.it2/.gemini/antigravity/scratch/insurance_extraction_app/llm_extractor.py)).
+    - The **Llama 4 Vision model** analyzes the visual layout and text.
+    - It extracts specific fields (e.g., *Insured Name*, *Policy Period*, *Premium*) based on the system prompt.
+4.  **Structured Output**: The AI returns a clean JSON object.
+5.  **Export**: The system converts this JSON into an Excel file ([data_exporter.py](file:///c:/Users/intern.it2/.gemini/antigravity/scratch/insurance_extraction_app/data_exporter.py)) for the user to download.
+
+### Key Components
+| File | Purpose |
+| :--- | :--- |
+| [main.py](file:///c:/Users/intern.it2/.gemini/antigravity/scratch/insurance_extraction_app/main.py) | The FastAPI server that orchestrates the entire process. |
+| [llm_extractor.py](file:///c:/Users/intern.it2/.gemini/antigravity/scratch/insurance_extraction_app/llm_extractor.py) | Connects to Groq. Contains the prompt instructions and handles the AI response. |
+| [pdf_processor.py](file:///c:/Users/intern.it2/.gemini/antigravity/scratch/insurance_extraction_app/pdf_processor.py) | specific utility to turn PDF pages into images for the Vision model. |
+| [data_exporter.py](file:///c:/Users/intern.it2/.gemini/antigravity/scratch/insurance_extraction_app/data_exporter.py) | Formats the extracted data into a user-friendly Excel sheet. |
+
+## 3. Why Groq?
+We migrated to **Groq** to leverage their **Language Processing Unit (LPU)** technology, which offers:
+- **Speed**: Extremely fast inference times, making the "upload-to-result" loop much quicker.
+- **Vision Capabilities**: The `llama-4-maverick` model is excellent at understanding document layouts, visual tables, and text-heavy images.
