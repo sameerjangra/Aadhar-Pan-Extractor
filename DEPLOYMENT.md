@@ -43,8 +43,8 @@ Render will detect the `Dockerfile` we created. Use the following settings:
 Scroll down to the **Environment Variables** section. You **MUST** add your API key here, or the app will not work.
 
 1.  Click **Add Environment Variable**.
-2.  **Key**: `GEMINI_API_KEY`
-3.  **Value**: (Paste your actual API key here, starting with `AIza...`)
+2.  **Key**: `GROQ_API_KEY`
+3.  **Value**: (Paste your actual API key here, starting with `gsk_...`)
 
 **Note**: Do NOT upload your `.env` file to GitHub. It is ignored by `.dockerignore` for security. Setting it in the dashboard is the secure way.
 
