@@ -1,14 +1,15 @@
 import pandas as pd
 import os
 
-def export_to_excel(data: dict, output_path: str = "insurance_policy.xlsx"):
+from typing import List, Dict, Any
+
+def export_to_excel(data: List[Dict[str, Any]], output_path: str = "extraction_results.xlsx"):
     """
-    Save the extracted dictionary data to an Excel file with formatting (Auto-width + Word Wrap).
+    Save the extracted list of dictionaries to an Excel file with formatting.
     """
     try:
-        # Create a DataFrame. 
-        # Since 'data' is a single dict, we wrap it in a list to create one row.
-        df = pd.DataFrame([data])
+        # Create a DataFrame directly from the list of dicts
+        df = pd.DataFrame(data)
         
         # Ensure the directory exists
         output_dir = os.path.dirname(output_path)

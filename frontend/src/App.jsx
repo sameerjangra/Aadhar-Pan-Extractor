@@ -2,41 +2,42 @@ import { useState } from 'react'
 import axios from 'axios'
 
 function App() {
-    const [file, setFile] = useState(null)
+    const [files, setFiles] = useState([])
     const [loading, setLoading] = useState(false)
     const [downloadUrl, setDownloadUrl] = useState(null)
     const [error, setError] = useState(null)
     const [status, setStatus] = useState("")
 
     const handleFileChange = (e) => {
-        setFile(e.target.files[0])
+        setFiles(Array.from(e.target.files))
         setDownloadUrl(null)
         setError(null)
         setStatus("")
     }
 
     const handleUpload = async () => {
-        if (!file) return
+        if (files.length === 0) return
 
         setLoading(true)
         setError(null)
-        setStatus("Uploading and Processing... This may take a minute.")
+        setStatus(`Uploading and Processing ${files.length} files...`)
 
         const formData = new FormData()
-        formData.append('file', file)
+        files.forEach((file) => {
+            formData.append('files', file)
+        })
 
         try {
-            const response = await axios.post('http://localhost:8000/extract/', formData, {
-                responseType: 'blob', // Important for file download
+            const response = await axios.post('/extract/', formData, {
+                responseType: 'blob',
             })
 
-            // Create blob link to download
             const url = window.URL.createObjectURL(new Blob([response.data]))
             setDownloadUrl(url)
             setStatus("Extraction Complete!")
         } catch (err) {
             console.error(err)
-            setError("An error occurred during extraction. Please try again.")
+            setError("An error occurred. Ensure all files are valid PDFs/Images.")
             setStatus("Failed.")
         } finally {
             setLoading(false)
@@ -47,28 +48,39 @@ function App() {
         <div className="app-container">
             <div className="glass-card">
                 <header>
-                    <h1>Insurance Policy AI Extractor</h1>
-                    <p className="subtitle">Upload your scanned policy PDF and get structured data instantly.</p>
+                    <h1>Aadhar Pan Extraction</h1>
+                    <p className="subtitle">Upload Aadhar and PAN cards to get structured data.</p>
                 </header>
 
                 <div className="upload-section">
                     <input
                         type="file"
-                        accept=".pdf"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        multiple
                         onChange={handleFileChange}
                         id="file-upload"
                         className="file-input"
                     />
                     <label htmlFor="file-upload" className="file-label">
-                        {file ? file.name : "Choose PDF File"}
+                        {files.length > 0 ? `${files.length} files selected` : "Choose Files"}
                     </label>
                 </div>
+
+                {files.length > 0 && (
+                    <div className="file-list">
+                        <ul>
+                            {files.map((f, i) => (
+                                <li key={i}>{f.name}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 {error && <div className="error-message">{error}</div>}
 
                 <button
                     onClick={handleUpload}
-                    disabled={!file || loading}
+                    disabled={files.length === 0 || loading}
                     className={`primary-button ${loading ? 'loading' : ''}`}
                 >
                     {loading ? "Processing..." : "Extract Data"}
@@ -78,7 +90,7 @@ function App() {
 
                 {downloadUrl && (
                     <div className="result-section">
-                        <a href={downloadUrl} download={`extracted_${file?.name}.xlsx`} className="download-button">
+                        <a href={downloadUrl} download="extracted_data.xlsx" className="download-button">
                             Download Excel Report
                         </a>
                     </div>

@@ -1,79 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insurance Policy Extractor</title>
+    <title>Aadhar Pan Extraction</title>
     <style>
         :root {
-            --primary-color: #2563eb;
-            --background-color: #f8fafc;
-            --card-background: #ffffff;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-primary);
-            margin: 0;
-            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            margin: 0;
+            padding: 20px;
         }
 
         .container {
-            background: var(--card-background);
+            background-color: var(--card-bg);
             padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 500px;
             text-align: center;
         }
 
         h1 {
-            color: var(--primary-color);
+            color: var(--primary);
             margin-bottom: 0.5rem;
+            font-size: 1.875rem;
         }
 
-        p {
-            color: var(--text-secondary);
+        .subtitle {
+            color: var(--text-light);
             margin-bottom: 2rem;
         }
 
         .upload-area {
-            border: 2px dashed #cbd5e1;
-            border-radius: 0.75rem;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
             padding: 2rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             margin-bottom: 1.5rem;
+            position: relative;
         }
 
         .upload-area:hover {
-            border-color: var(--primary-color);
-            background-color: #eff6ff;
+            border-color: var(--primary);
+            background-color: #eef2ff;
         }
 
-        .upload-area.dragging {
-            border-color: var(--primary-color);
-            background-color: #dbeafe;
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
         }
 
-        #fileInput {
-            display: none;
+        .file-list {
+            text-align: left;
+            margin-bottom: 1.5rem;
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
         }
 
-        .btn {
-            background-color: var(--primary-color);
+        .file-list ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        button {
+            background-color: var(--primary);
             color: white;
             padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: 0.5rem;
+            border-radius: 6px;
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
@@ -81,139 +101,131 @@
             width: 100%;
         }
 
-        .btn:hover {
-            background-color: #1d4ed8;
+        button:hover {
+            background-color: var(--primary-hover);
         }
 
-        .btn:disabled {
-            background-color: #94a3b8;
+        button:disabled {
+            background-color: #cbd5e1;
             cursor: not-allowed;
         }
 
-        #status {
-            margin-top: 1.5rem;
-            font-size: 0.9rem;
+        .status {
+            margin-top: 1rem;
+            font-weight: 500;
         }
 
         .error {
             color: #ef4444;
-        }
-
-        .success {
-            color: #10b981;
-        }
-
-        .loader {
-            display: none;
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid var(--primary-color);
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            margin: 10px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .file-info {
-            display: none;
             margin-top: 1rem;
             font-size: 0.9rem;
-            color: var(--text-secondary);
+        }
+
+        .download-btn {
+            display: inline-block;
+            margin-top: 1rem;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 500;
+            border: 1px solid var(--primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+        }
+
+        .download-btn:hover {
+            background-color: #eef2ff;
+        }
+
+        .hidden {
+            display: none;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Policy Extractor</h1>
-        <p>Upload your insurance policy PDF to extract data</p>
 
-        <div class="upload-area" id="dropZone">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #cbd5e1;">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <div style="margin-top: 1rem;">Click or drag file to upload</div>
-            <input type="file" id="fileInput" accept=".pdf">
+<body>
+
+    <div class="container">
+        <h1>Aadhar Pan Extraction</h1>
+        <p class="subtitle">Upload Aadhar and PAN cards to extract data effortlessly.</p>
+
+        <div class="upload-area">
+            <input type="file" id="fileInput" class="file-input" accept=".pdf,.jpg,.jpeg,.png" multiple>
+            <div id="uploadText">
+                <span style="font-size: 0.8rem; color: #9ca3af;">(PDF, JPG, JPEG, PNG)</span>
+            </div>
         </div>
 
-        <div class="file-info" id="fileInfo"></div>
-        
-        <button id="uploadBtn" class="btn" disabled>Extract Data</button>
-        
-        <div class="loader" id="loader"></div>
-        <div id="status"></div>
+        <div id="fileListContainer" class="file-list hidden">
+            <strong>Selected Files:</strong>
+            <ul id="fileList"></ul>
+        </div>
+
+        <button id="extractBtn" disabled>Extract Data</button>
+
+        <p id="statusText" class="status"></p>
+        <div id="errorMessage" class="error"></div>
+        <div id="resultSection" class="hidden">
+            <a id="downloadLink" href="#" class="download-btn">Download Excel Report</a>
+        </div>
     </div>
 
     <script>
-        const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const statusDiv = document.getElementById('status');
-        const fileInfo = document.getElementById('fileInfo');
-        const loader = document.getElementById('loader');
+        const extractBtn = document.getElementById('extractBtn');
+        const statusText = document.getElementById('statusText');
+        const errorMsg = document.getElementById('errorMessage');
+        const resultSection = document.getElementById('resultSection');
+        const downloadLink = document.getElementById('downloadLink');
+        const fileListContainer = document.getElementById('fileListContainer');
+        const fileList = document.getElementById('fileList');
+        const uploadText = document.getElementById('uploadText');
 
-        // Drag and drop handlers
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragging');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragging');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragging');
-            if (e.dataTransfer.files.length) {
-                handleFile(e.dataTransfer.files[0]);
-            }
-        });
-
-        dropZone.addEventListener('click', () => {
-            fileInput.click();
-        });
+        let selectedFiles = [];
 
         fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                handleFile(e.target.files[0]);
-            }
+            selectedFiles = Array.from(e.target.files);
+            renderFileList();
         });
 
-        let currentFile = null;
-
-        function handleFile(file) {
-            if (file.type !== 'application/pdf') {
-                showStatus('Please upload a PDF file', 'error');
-                return;
+        function renderFileList() {
+            if (selectedFiles.length > 0) {
+                fileListContainer.classList.remove('hidden');
+                extractBtn.disabled = false;
+                uploadText.innerHTML = `<strong>${selectedFiles.length} Files Selected</strong>`;
+            } else {
+                fileListContainer.classList.add('hidden');
+                extractBtn.disabled = true;
+                uploadText.innerHTML = `
+                <span style="font-size: 0.8rem; color: #9ca3af;">(PDF, JPG, JPEG, PNG)</span>
+            `;
             }
-            currentFile = file;
-            uploadBtn.disabled = false;
-            fileInfo.style.display = 'block';
-            fileInfo.textContent = `Selected: ${file.name}`;
-            showStatus('', '');
+
+            fileList.innerHTML = '';
+            selectedFiles.forEach(file => {
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                fileList.appendChild(li);
+            });
+
+            // Reset UI
+            errorMsg.textContent = '';
+            statusText.textContent = '';
+            resultSection.classList.add('hidden');
         }
 
-        function showStatus(message, type) {
-            statusDiv.textContent = message;
-            statusDiv.className = type;
-        }
+        extractBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) return;
 
-        uploadBtn.addEventListener('click', async () => {
-            if (!currentFile) return;
-
-            uploadBtn.disabled = true;
-            loader.style.display = 'block';
-            showStatus('Processing... This may take a moment.', '');
+            extractBtn.disabled = true;
+            extractBtn.textContent = 'Processing...';
+            statusText.textContent = `Uploading and analyzing ${selectedFiles.length} files...`;
+            errorMsg.textContent = '';
+            resultSection.classList.add('hidden');
 
             const formData = new FormData();
-            formData.append('file', currentFile);
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
 
             try {
                 const response = await fetch('/extract/', {
@@ -226,34 +238,25 @@
                     throw new Error(errorData.detail || 'Extraction failed');
                 }
 
-                // Initial success message
-                showStatus('Extraction complete! Downloading...', 'success');
-
-                // Get filename from header or default
-                const filenameHeader = response.headers.get('content-disposition');
-                let filename = 'extracted_data.xlsx';
-                if (filenameHeader && filenameHeader.includes('filename=')) {
-                    filename = filenameHeader.split('filename=')[1].replace(/['"]/g, '');
-                }
-
-                // Convert response to blob and download
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
 
+                downloadLink.href = url;
+                downloadLink.download = 'extracted_data.xlsx';
+
+                resultSection.classList.remove('hidden');
+                statusText.textContent = '✅ Extraction Complete!';
             } catch (error) {
-                showStatus(`Error: ${error.message}`, 'error');
+                console.error(error);
+                errorMsg.textContent = `Error: ${error.message}`;
+                statusText.textContent = '❌ Failed';
             } finally {
-                uploadBtn.disabled = false;
-                loader.style.display = 'none';
+                extractBtn.disabled = false;
+                extractBtn.textContent = 'Extract Data';
             }
         });
     </script>
+
 </body>
+
 </html>
