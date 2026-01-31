@@ -221,11 +221,14 @@
                     // Photo
                     const photoTd = document.createElement('td');
                     photoTd.className = 'photo-cell';
-                    if (doc['Photo URL']) {
+
+                    const photoSource = doc['Photo Base64'] || doc['Photo URL'];
+
+                    if (photoSource) {
                         const div = document.createElement('div');
 
                         const img = document.createElement('img');
-                        img.src = doc['Photo URL'];
+                        img.src = photoSource;
                         img.alt = 'Extracted Face';
                         div.appendChild(img);
 
@@ -233,7 +236,7 @@
                         div.appendChild(br);
 
                         const link = document.createElement('a');
-                        link.href = doc['Photo URL'];
+                        link.href = photoSource;
                         link.download = `photo_${doc['Name'] || 'face'}.jpg`;
                         link.textContent = 'Download Photo';
                         link.style.display = 'block';
@@ -257,6 +260,12 @@
                     let idNum = doc['Aadhar Number'] || doc['PAN Number'] || doc['DL Number'] || '-';
                     if (doc['Document Type'] === 'PAN + Driving Licence') {
                         idNum = `PAN: ${doc['PAN Number'] || '-'}<br>DL: ${doc['DL Number'] || '-'}`;
+                    }
+                    else if (doc['Document Type'].includes('+')) {
+                        // Generic handling for other merges
+                        idNum = idNum;
+                        if (doc['PAN Number']) idNum += `<br>PAN: ${doc['PAN Number']}`;
+                        if (doc['DL Number']) idNum += `<br>DL: ${doc['DL Number']}`;
                     }
                     addCell(tr, idNum, true);
 

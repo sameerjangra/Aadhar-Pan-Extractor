@@ -244,19 +244,31 @@ async def process_files_logic(files: List[UploadFile]):
                 try: os.remove(p)
                 except: pass
 
+import base64
+
 @app.post("/extract/")
 async def extract_data(files: List[UploadFile] = File(...)):
     """
-    Returns JSON Data with extracted information and photo URLs.
+    Returns JSON Data with extracted information, photo URLs, and Base64 encoded images.
     """
     request_id, final_docs = await process_files_logic(files)
     
-    # Post-process for JSON friendly URLs
+    # Post-process for JSON friendly URLs and Base64
     json_docs = []
     for doc in final_docs:
         d = doc.copy()
         if "Photo Path" in d:
-            # Convert OS path to URL path
+            # 1. Base64 Encoding
+            try:
+                # Photo Path is relative to cwd (e.g. static/faces/...)
+                if os.path.exists(d["Photo Path"]):
+                    with open(d["Photo Path"], "rb") as image_file:
+                         encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+                         d["Photo Base64"] = f"data:image/jpeg;base64,{encoded_string}"
+            except Exception as e:
+                print(f"Error encoding base64 for {d['Photo Path']}: {e}")
+
+            # 2. Convert OS path to URL path
             # static/faces/abcd.jpg -> /static/faces/abcd.jpg
             # Ensure forward slashes
             rel_path = d["Photo Path"].replace("\\", "/")
@@ -264,6 +276,7 @@ async def extract_data(files: List[UploadFile] = File(...)):
                 rel_path = "/" + rel_path
             d["Photo Path"] = rel_path
             d["Photo URL"] = rel_path # Duplicate for clarity
+            
         json_docs.append(d)
     
     return JSONResponse(content={
