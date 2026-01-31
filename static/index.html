@@ -222,10 +222,26 @@
                     const photoTd = document.createElement('td');
                     photoTd.className = 'photo-cell';
                     if (doc['Photo URL']) {
+                        const div = document.createElement('div');
+
                         const img = document.createElement('img');
                         img.src = doc['Photo URL'];
                         img.alt = 'Extracted Face';
-                        photoTd.appendChild(img);
+                        div.appendChild(img);
+
+                        const br = document.createElement('br');
+                        div.appendChild(br);
+
+                        const link = document.createElement('a');
+                        link.href = doc['Photo URL'];
+                        link.download = `photo_${doc['Name'] || 'face'}.jpg`;
+                        link.textContent = 'Download Photo';
+                        link.style.display = 'block';
+                        link.style.marginTop = '5px';
+                        link.style.fontSize = '12px';
+                        div.appendChild(link);
+
+                        photoTd.appendChild(div);
                     } else {
                         photoTd.textContent = 'No Photo';
                     }
