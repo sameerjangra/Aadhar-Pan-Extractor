@@ -68,15 +68,18 @@ def export_to_excel(data: List[Dict[str, Any]], output_path: str = "extraction_r
                     if photo_path and isinstance(photo_path, str) and os.path.exists(photo_path):
                         try:
                             img = OpenpyxlImage(photo_path)
-                            # Resize to fit cell roughly
-                            img.height = 80
-                            img.width = 80
+                            # Resize to fit cell roughly, maintaining 35:45 aspect ratio (7:9)
+                            # Let's use Height ~ 90 pixels (approx 24mm on screen? Excel units are weird).
+                            # 35mm : 45mm -> 0.777 ratio.
+                            img.height = 90
+                            img.width = 70
                             
                             # Excel row is i+2 (1 for header, 1 for 0-index)
                             excel_row = i + 2
                             
-                            # Set row height
-                            worksheet.row_dimensions[excel_row].height = 65
+                            # Set row height to accommodate image (Height in points. 1 px ~ 0.75 points?)
+                            # 90 px is roughly 68 points.
+                            worksheet.row_dimensions[excel_row].height = 75
                             
                             # Add image to cell
                             worksheet.add_image(img, cell.column_letter + str(excel_row))
