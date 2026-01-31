@@ -58,48 +58,70 @@ async def extract_data(files: List[UploadFile] = File(...)):
     # 1. Collect all images
     all_images_with_filenames = []
     
+    
+    # Track temp files for cleanup
+    temp_files_to_cleanup = []
+    
     try:
         if not client:
              raise HTTPException(status_code=500, detail="LLM Client not initialized. Check server logs/API Key.")
+
+        from face_extractor import extract_face
 
         for file in files:
             # Basic validation
             if not file.filename.lower().endswith((".pdf", ".jpg", ".jpeg", ".png")):
                 continue
 
-            temp_path = os.path.join(TEMP_DIR, f"{request_id}_{file.filename}")
+            # Original upload path
+            file_ext = os.path.splitext(file.filename)[1]
+            temp_filename = f"{request_id}_{uuid.uuid4()}{file_ext}"
+            temp_path = os.path.join(TEMP_DIR, temp_filename)
+            temp_files_to_cleanup.append(temp_path)
             
             try:
                 # Save uploaded file
                 with open(temp_path, "wb") as buffer:
                     shutil.copyfileobj(file.file, buffer)
                 
-                # Convert to Images
+                # Convert to Images (and save them as temp files for face extraction)
                 images = []
+                image_paths = [] # Store paths corresponding to images
+                
                 if file.filename.lower().endswith(".pdf"):
-                    images = convert_pdf_to_images(temp_path)
+                    pil_images = convert_pdf_to_images(temp_path)
+                    for idx, img in enumerate(pil_images):
+                         # Save each page as image
+                         page_filename = f"{request_id}_{uuid.uuid4()}_page{idx}.jpg"
+                         page_path = os.path.join(TEMP_DIR, page_filename)
+                         img.save(page_path, "JPEG")
+                         temp_files_to_cleanup.append(page_path)
+                         images.append(img)
+                         image_paths.append(page_path)
                 else:
+                    # It's already an image, just ensure it's RGB
                     from PIL import Image
                     try:
-                        img = Image.open(temp_path).convert('RGB')
-                        images = [img]
+                         # We already saved it to temp_path. Let's verify it opens.
+                         img = Image.open(temp_path).convert('RGB')
+                         images = [img]
+                         image_paths = [temp_path]
                     except Exception as e:
                         print(f"Image load failed for {file.filename}: {e}")
                         continue
                 
                 # Add to collection
-                for img in images:
+                for img, path in zip(images, image_paths):
                     all_images_with_filenames.append({
                         "image": img,
-                        "filename": file.filename
+                        "filename": file.filename, # Original user filename for LLM context
+                        "path": path # Local temp path for face extraction
                     })
 
             except Exception as e:
                 print(f"Error processing file {file.filename}: {e}")
-            finally:
-                # Cleanup temp file
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
+                # Continue with other files?
+                continue
 
         if not all_images_with_filenames:
              raise HTTPException(status_code=400, detail="No valid images found in upload.")
@@ -121,39 +143,73 @@ async def extract_data(files: List[UploadFile] = File(...)):
             pan_docs = [d for d in docs if d.get("Document Type") == "PAN"]
             dl_docs = [d for d in docs if d.get("Document Type") == "Driving Licence"]
             
+            # Helper to find source image path
+            def get_source_path_for_doc(doc, preferred_files=None):
+                # doc["Source Files"] matches `file.filename` (e.g. "aadhar.jpg")
+                # We need to find the corresponding `path` in `all_images_with_filenames`.
+                # Limitation: If user uploaded "aadhar.jpg" twice, we might pick the wrong one.
+                # But usually distinct filenames or we pick first match.
+                
+                # Optimization: Pass "preferred_files" (e.g. Aadhar Front) if we can distinguish?
+                # LLM gives "Source Files": ["a.jpg", "b.jpg"].
+                # We iterate `all_images_with_filenames` and return the first path that matches one of these filenames.
+                
+                source_filenames = doc.get("Source Files", [])
+                if not source_filenames: return None
+
+                for item in all_images_with_filenames:
+                    if item["filename"] in source_filenames:
+                        # Found a match. Is it the checks "Front" vs "Back"?
+                        # For Aadhar, we want Front.
+                        # We can't easily know which specific image path is "Front" without LLM telling us "Front came from a.jpg".
+                        # Current Prompt doesn't give that mapping.
+                        # Heuristic: Try to detect face in ALL source images. Return the one with biggest face?
+                        return item["path"] # Just return first match for now.
+                return None
+
+            # Helper to extract face from list of possible images
+            def get_face_photo(doc):
+                 source_filenames = doc.get("Source Files", [])
+                 best_face_path = None
+                 
+                 # Check all contributing images
+                 candidates = [item for item in all_images_with_filenames if item["filename"] in source_filenames]
+                 
+                 for item in candidates:
+                      face_path = extract_face(item["path"])
+                      if face_path:
+                           return face_path # Return first found face
+                 return None
+
             # 3a. Validate Aadhar
             for doc in aadhar_docs:
                 sides = doc.get("Sides Detected", [])
-                # Normalize case just in case
                 sides = [s.title() for s in sides]
                 
-                # Check for completeness
                 has_front = "Front" in sides
                 has_back = "Back" in sides
                 
                 if not (has_front and has_back):
-                     # STRICT VALIDATION RULE
                      missing = []
                      if not has_front: missing.append("Front")
                      if not has_back: missing.append("Back")
                      msg = f"Incomplete Aadhar detected ({doc.get('Name', 'Unknown')}). Missing: {', '.join(missing)}. Please upload both Front and Back sides."
                      raise HTTPException(status_code=400, detail=msg)
                 
-                # If valid, just add to results (clean up internal field)
-                if "Sides Detected" in doc:
-                    del doc["Sides Detected"]
+                if "Sides Detected" in doc: del doc["Sides Detected"]
+                
+                # Extract Photo (Aadhar Front)
+                photo_path = get_face_photo(doc)
+                if photo_path:
+                    doc["Photo Path"] = photo_path
+
                 merged_results.append(doc)
 
             # 3b. Merge PAN + DL
-            # Validate Presence (Symmetric)
             if pan_docs and not dl_docs:
                  raise HTTPException(status_code=400, detail="PAN Card detected but no Driving Licence found. Please upload Driving Licence as well.")
             if dl_docs and not pan_docs:
                  raise HTTPException(status_code=400, detail="Driving Licence detected but no PAN Card found. Please upload PAN Card as well.")
-
-            # Logic: For each PAN, look for matching DL (Name + maybe DOB).
-            # If match -> Merge. If no match -> Keep separate.
-            # Also handle DLs that don't match any PAN.
             
             used_dls = set()
             
@@ -163,22 +219,23 @@ async def extract_data(files: List[UploadFile] = File(...)):
                 
                 for i, dl in enumerate(dl_docs):
                     if i in used_dls: continue
-                    
                     dl_name = dl.get("Name", "").lower().strip()
                     
-                    # Basic Name Match
                     if pan_name and dl_name and pan_name == dl_name:
-                        # MERGE
                         merged_doc = pan.copy()
                         merged_doc["Document Type"] = "PAN + Driving Licence"
                         
-                        # Add DL unique fields
                         if "DL Number" in dl: merged_doc["DL Number"] = dl["DL Number"]
-                        if "Address" in dl: merged_doc["Address"] = dl["Address"] # Prefer DL address or keep PAN? Prompt says Addr from DL.
+                        if "Address" in dl: merged_doc["Address"] = dl["Address"]
                         
-                        # Add source files
                         src_files = pan.get("Source Files", []) + dl.get("Source Files", [])
                         merged_doc["Source Files"] = list(set(src_files))
+                        
+                        # Extract Photo (Prefer PAN)
+                        # Try PAN source files first
+                        photo_path = get_face_photo(pan)
+                        if photo_path:
+                             merged_doc["Photo Path"] = photo_path
                         
                         merged_results.append(merged_doc)
                         used_dls.add(i)
@@ -186,11 +243,12 @@ async def extract_data(files: List[UploadFile] = File(...)):
                         break
                 
                 if not match_found:
-                    # PAN exists but no matching DL found (Name mismatch).
-                    # Since we verified dl_docs exists at the top, this means valid mismatch.
+                    # Valid mismatch (verified symmetric presence above)
+                    # Extract Photo for PAN
+                    photo_path = get_face_photo(pan)
+                    if photo_path: pan["Photo Path"] = photo_path
                     merged_results.append(pan)
 
-            # Add remaining unmatched DLs
             for i, dl in enumerate(dl_docs):
                 if i not in used_dls:
                     merged_results.append(dl)
@@ -219,4 +277,12 @@ async def extract_data(files: List[UploadFile] = File(...)):
     except Exception as e:
         print(f"Error processing request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Cleanup
+        for p in temp_files_to_cleanup:
+            if os.path.exists(p):
+                try:
+                    os.remove(p)
+                except:
+                    pass
 
