@@ -4,228 +4,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aadhar Pan Extraction</title>
+    <title>Extraction API Demo</title>
     <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --bg: #f3f4f6;
-            --card-bg: #ffffff;
-            --text: #1f2937;
-            --text-light: #6b7280;
-            --border: #e5e7eb;
-        }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
+            background: #f5f5f5;
         }
 
         .container {
-            background-color: var(--card-bg);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 500px;
-            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-            font-size: 1.875rem;
+            color: #333;
         }
 
-        .subtitle {
-            color: var(--text-light);
-            margin-bottom: 2rem;
-        }
-
-        .upload-area {
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            padding: 2rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 1.5rem;
-            position: relative;
-        }
-
-        .upload-area:hover {
-            border-color: var(--primary);
-            background-color: #eef2ff;
-        }
-
-        .file-input {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .file-list {
-            text-align: left;
-            margin-bottom: 1.5rem;
-            background: #f9fafb;
-            padding: 1rem;
-            border-radius: 6px;
-            font-size: 0.9rem;
-        }
-
-        .file-list ul {
-            margin: 0;
-            padding-left: 1.2rem;
+        .controls {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #e9ecef;
+            border-radius: 4px;
         }
 
         button {
-            background-color: var(--primary);
+            background: #007bff;
             color: white;
-            padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 500;
+            padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
-            transition: background-color 0.2s;
-            width: 100%;
+            font-size: 16px;
         }
 
         button:hover {
-            background-color: var(--primary-hover);
+            background: #0056b3;
         }
 
         button:disabled {
-            background-color: #cbd5e1;
+            background: #ccc;
             cursor: not-allowed;
         }
 
-        .status {
-            margin-top: 1rem;
-            font-weight: 500;
+        #results {
+            margin-top: 20px;
         }
 
         .error {
-            color: #ef4444;
-            margin-top: 1rem;
-            font-size: 0.9rem;
-        }
-
-        .download-btn {
-            display: inline-block;
-            margin-top: 1rem;
-            text-decoration: none;
-            color: var(--primary);
-            font-weight: 500;
-            border: 1px solid var(--primary);
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-        }
-
-        .download-btn:hover {
-            background-color: #eef2ff;
-        }
-
-        .hidden {
+            color: red;
+            padding: 10px;
+            background: #ffe6e6;
+            border-radius: 4px;
+            margin-top: 10px;
             display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        .photo-cell img {
+            max-width: 100px;
+            max-height: 120px;
+            border-radius: 4px;
+        }
+
+        .json-view {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+        }
+
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
 
 <body>
-
     <div class="container">
-        <h1>Aadhar Pan Extraction</h1>
-        <p class="subtitle">Upload Aadhar and PAN cards to extract data effortlessly.</p>
+        <h1>🔍 JSON Extraction API Demo</h1>
 
-        <div class="upload-area">
-            <input type="file" id="fileInput" class="file-input" accept=".pdf,.jpg,.jpeg,.png" multiple>
-            <div id="uploadText">
-                <span style="font-size: 0.8rem; color: #9ca3af;">(PDF, JPG, JPEG, PNG)</span>
-            </div>
+        <div class="controls">
+            <h3>1. Upload Documents (Aadhar / PAN / Driving Licence)</h3>
+            <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png">
+            <br><br>
+            <button onclick="uploadFiles()" id="uploadBtn">Extract Data</button>
+            <div class="loader" id="loader"></div>
+            <div id="errorMsg" class="error"></div>
         </div>
 
-        <div id="fileListContainer" class="file-list hidden">
-            <strong>Selected Files:</strong>
-            <ul id="fileList"></ul>
-        </div>
+        <div id="results" style="display: none;">
+            <h3>2. Extracted Data</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Type</th>
+                        <th>Name</th>
+                        <th>ID Number</th>
+                        <th>DOB</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
 
-        <button id="extractBtn" disabled>Extract Data</button>
-
-        <p id="statusText" class="status"></p>
-        <div id="errorMessage" class="error"></div>
-        <div id="resultSection" class="hidden">
-            <a id="downloadLink" href="#" class="download-btn">Download Excel Report</a>
+            <h3>3. JSON Response</h3>
+            <pre class="json-view" id="jsonOutput"></pre>
         </div>
     </div>
 
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const extractBtn = document.getElementById('extractBtn');
-        const statusText = document.getElementById('statusText');
-        const errorMsg = document.getElementById('errorMessage');
-        const resultSection = document.getElementById('resultSection');
-        const downloadLink = document.getElementById('downloadLink');
-        const fileListContainer = document.getElementById('fileListContainer');
-        const fileList = document.getElementById('fileList');
-        const uploadText = document.getElementById('uploadText');
+        async function uploadFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            const btn = document.getElementById('uploadBtn');
+            const loader = document.getElementById('loader');
+            const errorMsg = document.getElementById('errorMsg');
+            const resultsDiv = document.getElementById('results');
+            const tableBody = document.getElementById('tableBody');
+            const jsonOutput = document.getElementById('jsonOutput');
 
-        let selectedFiles = [];
-
-        fileInput.addEventListener('change', (e) => {
-            selectedFiles = Array.from(e.target.files);
-            renderFileList();
-        });
-
-        function renderFileList() {
-            if (selectedFiles.length > 0) {
-                fileListContainer.classList.remove('hidden');
-                extractBtn.disabled = false;
-                uploadText.innerHTML = `<strong>${selectedFiles.length} Files Selected</strong>`;
-            } else {
-                fileListContainer.classList.add('hidden');
-                extractBtn.disabled = true;
-                uploadText.innerHTML = `
-                <span style="font-size: 0.8rem; color: #9ca3af;">(PDF, JPG, JPEG, PNG)</span>
-            `;
+            if (files.length === 0) {
+                showError("Please select at least one file.");
+                return;
             }
 
-            fileList.innerHTML = '';
-            selectedFiles.forEach(file => {
-                const li = document.createElement('li');
-                li.textContent = file.name;
-                fileList.appendChild(li);
-            });
-
             // Reset UI
-            errorMsg.textContent = '';
-            statusText.textContent = '';
-            resultSection.classList.add('hidden');
-        }
-
-        extractBtn.addEventListener('click', async () => {
-            if (selectedFiles.length === 0) return;
-
-            extractBtn.disabled = true;
-            extractBtn.textContent = 'Processing...';
-            statusText.textContent = `Uploading and analyzing ${selectedFiles.length} files...`;
-            errorMsg.textContent = '';
-            resultSection.classList.add('hidden');
+            errorMsg.style.display = 'none';
+            resultsDiv.style.display = 'none';
+            btn.disabled = true;
+            loader.style.display = 'inline-block';
+            tableBody.innerHTML = '';
 
             const formData = new FormData();
-            selectedFiles.forEach(file => {
-                formData.append('files', file);
-            });
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
 
             try {
                 const response = await fetch('/extract/', {
@@ -233,30 +188,92 @@
                     body: formData
                 });
 
+                const data = await response.json();
+
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Extraction failed');
+                    throw new Error(data.detail || 'Upload failed');
                 }
 
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
+                // Render Results
+                displayResults(data);
 
-                downloadLink.href = url;
-                downloadLink.download = 'extracted_data.xlsx';
-
-                resultSection.classList.remove('hidden');
-                statusText.textContent = '✅ Extraction Complete!';
-            } catch (error) {
-                console.error(error);
-                errorMsg.textContent = `Error: ${error.message}`;
-                statusText.textContent = '❌ Failed';
+            } catch (err) {
+                showError(err.message);
             } finally {
-                extractBtn.disabled = false;
-                extractBtn.textContent = 'Extract Data';
+                btn.disabled = false;
+                loader.style.display = 'none';
             }
-        });
-    </script>
+        }
 
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const tableBody = document.getElementById('tableBody');
+            const jsonOutput = document.getElementById('jsonOutput');
+
+            // Show JSON
+            jsonOutput.textContent = JSON.stringify(data, null, 2);
+
+            // Populate Table
+            if (data.data && Array.isArray(data.data)) {
+                data.data.forEach(doc => {
+                    const tr = document.createElement('tr');
+
+                    // Photo
+                    const photoTd = document.createElement('td');
+                    photoTd.className = 'photo-cell';
+                    if (doc['Photo URL']) {
+                        const img = document.createElement('img');
+                        img.src = doc['Photo URL'];
+                        img.alt = 'Extracted Face';
+                        photoTd.appendChild(img);
+                    } else {
+                        photoTd.textContent = 'No Photo';
+                    }
+                    tr.appendChild(photoTd);
+
+                    // Type
+                    addCell(tr, doc['Document Type']);
+
+                    // Name
+                    addCell(tr, doc['Name']);
+
+                    // ID Number
+                    let idNum = doc['Aadhar Number'] || doc['PAN Number'] || doc['DL Number'] || '-';
+                    if (doc['Document Type'] === 'PAN + Driving Licence') {
+                        idNum = `PAN: ${doc['PAN Number'] || '-'}<br>DL: ${doc['DL Number'] || '-'}`;
+                    }
+                    addCell(tr, idNum, true);
+
+                    // DOB
+                    addCell(tr, doc['Date of Birth'] || '-');
+
+                    // Other Details
+                    let details = '';
+                    if (doc['Address']) details += `<b>Address:</b> ${doc['Address']}<br>`;
+                    if (doc['Father Name']) details += `<b>Father:</b> ${doc['Father Name']}<br>`;
+                    if (doc['Gender']) details += `<b>Gender:</b> ${doc['Gender']}<br>`;
+                    addCell(tr, details, true);
+
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            resultsDiv.style.display = 'block';
+        }
+
+        function addCell(tr, text, isHtml = false) {
+            const td = document.createElement('td');
+            if (isHtml) td.innerHTML = text;
+            else td.textContent = text || '-';
+            tr.appendChild(td);
+        }
+
+        function showError(msg) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.textContent = "Error: " + msg;
+            errorMsg.style.display = 'block';
+        }
+    </script>
 </body>
 
 </html>
