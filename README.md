@@ -5,8 +5,43 @@ A specialized tool to extract data from Aadhar and PAN cards.
 ## Features
 - **Multi-file Upload**: Supports PDF, JPG, JPEG, PNG.
 - **Auto-Classification**: Detects Aadhar vs PAN.
-- **Data Extraction**: Extracts key fields (Name, DOB, IDs, Address).
-- **Excel Export**: Download results in a formatted Excel sheet.
+- **JSON API**: Standardized JSON output for integration.
+- **Photo Extraction**: Extracts user photos and returns accessible URLs.
+
+## 🚀 API Usage
+
+### **Endpoint**
+`POST /extract/`
+
+### **Request**
+- **Method**: `POST`
+- **Body**: `multipart/form-data`
+- **Key**: `files` (Upload 1 or more PDF/Image files)
+
+### **Response (JSON)**
+```json
+{
+  "status": "success",
+  "request_id": "uuid-string",
+  "data": [
+    {
+      "Document Type": "Aadhar",
+      "Name": "John Doe",
+      "Aadhar Number": "1234 5678 9012",
+      "Photo URL": "/static/faces/abc-123.jpg",
+      ...
+    }
+  ]
+}
+```
+
+### **Example (cURL)**
+```bash
+curl -X POST "https://your-app-url.onrender.com/extract/" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "files=@/path/to/aadhar.jpg"
+```
 
 ## Usage
 
