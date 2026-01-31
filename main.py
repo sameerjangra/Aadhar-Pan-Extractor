@@ -13,7 +13,7 @@ load_dotenv()
 # Import our modules
 from pdf_processor import convert_pdf_to_images
 from llm_extractor import extract_all_documents, client
-from data_exporter import export_to_excel
+
 from face_extractor import extract_face
 
 app = FastAPI(title="Aadhar Pan Extraction")
@@ -223,24 +223,7 @@ async def process_files_logic(files: List[UploadFile]):
 @app.post("/extract/")
 async def extract_data(files: List[UploadFile] = File(...)):
     """
-    Returns Excel File
-    """
-    request_id, final_docs = await process_files_logic(files)
-    
-    output_filename = f"extracted_{request_id}.xlsx"
-    output_path = os.path.join(OUTPUT_DIR, output_filename)
-    export_to_excel(final_docs, output_path)
-    
-    return FileResponse(
-        path=output_path, 
-        filename=f"extracted_data.xlsx", 
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-
-@app.post("/extract-json/")
-async def extract_data_json(files: List[UploadFile] = File(...)):
-    """
-    Returns JSON Data
+    Returns JSON Data with extracted information and photo URLs.
     """
     request_id, final_docs = await process_files_logic(files)
     
