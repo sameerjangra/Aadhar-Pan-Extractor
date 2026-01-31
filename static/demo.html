@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extraction API Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #results {
+            margin-top: 20px;
+        }
+
+        .error {
+            color: red;
+            padding: 10px;
+            background: #ffe6e6;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        .photo-cell img {
+            max-width: 100px;
+            max-height: 120px;
+            border-radius: 4px;
+        }
+
+        .json-view {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: monospace;
+        }
+
+        .loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔍 JSON Extraction API Demo</h1>
+
+        <div class="controls">
+            <h3>1. Upload Documents (Aadhar / PAN / Driving Licence)</h3>
+            <input type="file" id="fileInput" multiple accept=".pdf,.jpg,.jpeg,.png">
+            <br><br>
+            <button onclick="uploadFiles()" id="uploadBtn">Extract Data</button>
+            <div class="loader" id="loader"></div>
+            <div id="errorMsg" class="error"></div>
+        </div>
+
+        <div id="results" style="display: none;">
+            <h3>2. Extracted Data</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Type</th>
+                        <th>Name</th>
+                        <th>ID Number</th>
+                        <th>DOB</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+
+            <h3>3. JSON Response</h3>
+            <pre class="json-view" id="jsonOutput"></pre>
+        </div>
+    </div>
+
+    <script>
+        async function uploadFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            const btn = document.getElementById('uploadBtn');
+            const loader = document.getElementById('loader');
+            const errorMsg = document.getElementById('errorMsg');
+            const resultsDiv = document.getElementById('results');
+            const tableBody = document.getElementById('tableBody');
+            const jsonOutput = document.getElementById('jsonOutput');
+
+            if (files.length === 0) {
+                showError("Please select at least one file.");
+                return;
+            }
+
+            // Reset UI
+            errorMsg.style.display = 'none';
+            resultsDiv.style.display = 'none';
+            btn.disabled = true;
+            loader.style.display = 'inline-block';
+            tableBody.innerHTML = '';
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+            }
+
+            try {
+                const response = await fetch('/extract-json/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Upload failed');
+                }
+
+                // Render Results
+                displayResults(data);
+
+            } catch (err) {
+                showError(err.message);
+            } finally {
+                btn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const tableBody = document.getElementById('tableBody');
+            const jsonOutput = document.getElementById('jsonOutput');
+
+            // Show JSON
+            jsonOutput.textContent = JSON.stringify(data, null, 2);
+
+            // Populate Table
+            if (data.data && Array.isArray(data.data)) {
+                data.data.forEach(doc => {
+                    const tr = document.createElement('tr');
+
+                    // Photo
+                    const photoTd = document.createElement('td');
+                    photoTd.className = 'photo-cell';
+                    if (doc['Photo URL']) {
+                        const img = document.createElement('img');
+                        img.src = doc['Photo URL'];
+                        img.alt = 'Extracted Face';
+                        photoTd.appendChild(img);
+                    } else {
+                        photoTd.textContent = 'No Photo';
+                    }
+                    tr.appendChild(photoTd);
+
+                    // Type
+                    addCell(tr, doc['Document Type']);
+
+                    // Name
+                    addCell(tr, doc['Name']);
+
+                    // ID Number
+                    let idNum = doc['Aadhar Number'] || doc['PAN Number'] || doc['DL Number'] || '-';
+                    if (doc['Document Type'] === 'PAN + Driving Licence') {
+                        idNum = `PAN: ${doc['PAN Number'] || '-'}<br>DL: ${doc['DL Number'] || '-'}`;
+                    }
+                    addCell(tr, idNum, true);
+
+                    // DOB
+                    addCell(tr, doc['Date of Birth'] || '-');
+
+                    // Other Details
+                    let details = '';
+                    if (doc['Address']) details += `<b>Address:</b> ${doc['Address']}<br>`;
+                    if (doc['Father Name']) details += `<b>Father:</b> ${doc['Father Name']}<br>`;
+                    if (doc['Gender']) details += `<b>Gender:</b> ${doc['Gender']}<br>`;
+                    addCell(tr, details, true);
+
+                    tableBody.appendChild(tr);
+                });
+            }
+
+            resultsDiv.style.display = 'block';
+        }
+
+        function addCell(tr, text, isHtml = false) {
+            const td = document.createElement('td');
+            if (isHtml) td.innerHTML = text;
+            else td.textContent = text || '-';
+            tr.appendChild(td);
+        }
+
+        function showError(msg) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.textContent = "Error: " + msg;
+            errorMsg.style.display = 'block';
+        }
+    </script>
+</body>
+
+</html>
