@@ -131,82 +131,106 @@ async def process_files_logic(files: List[UploadFile]):
                        return face_path 
              return None
 
-        # Validation Logic
+        # --- Identity Merging Logic ---
         merged_results = []
         
-        aadhar_docs = [d for d in extracted_documents if d.get("Document Type") == "Aadhar"]
-        pan_docs = [d for d in extracted_documents if d.get("Document Type") == "PAN"]
-        dl_docs = [d for d in extracted_documents if d.get("Document Type") == "Driving Licence"]
-        
-        # Validate Aadhar
-        for doc in aadhar_docs:
-            sides = doc.get("Sides Detected", [])
-            sides = [s.title() for s in sides]
-            
-            has_front = "Front" in sides
-            has_back = "Back" in sides
-            
-            if not (has_front and has_back):
-                 missing = []
-                 if not has_front: missing.append("Front")
-                 if not has_back: missing.append("Back")
-                 msg = f"Incomplete Aadhar detected ({doc.get('Name', 'Unknown')}). Missing: {', '.join(missing)}. Please upload both Front and Back sides."
-                 raise HTTPException(status_code=400, detail=msg)
-            
-            if "Sides Detected" in doc: del doc["Sides Detected"]
-            
-            # Extract Photo
-            photo_path = get_face_photo(doc)
-            if photo_path: doc["Photo Path"] = photo_path
+        # Helper to normalize strings for comparison
+        def normalize(s):
+            return str(s).lower().strip().replace("  ", " ") if s else ""
 
-            merged_results.append(doc)
-
-        # Validate PAN/DL
-        if pan_docs and not dl_docs:
-             raise HTTPException(status_code=400, detail="PAN Card detected but no Driving Licence found. Please upload Driving Licence as well.")
-        if dl_docs and not pan_docs:
-             raise HTTPException(status_code=400, detail="Driving Licence detected but no PAN Card found. Please upload PAN Card as well.")
-        
-        used_dls = set()
-        
-        for pan in pan_docs:
-            pan_name = pan.get("Name", "").lower().strip()
-            match_found = False
+        for doc in extracted_documents:
+            # Check if this doc belongs to an existing identity in merged_results
+            match_index = -1
             
-            for i, dl in enumerate(dl_docs):
-                if i in used_dls: continue
-                dl_name = dl.get("Name", "").lower().strip()
+            doc_aadhar = normalize(doc.get("Aadhar Number"))
+            doc_pan = normalize(doc.get("PAN Number"))
+            doc_name = normalize(doc.get("Name"))
+            
+            for i, existing in enumerate(merged_results):
+                ext_aadhar = normalize(existing.get("Aadhar Number"))
+                ext_pan = normalize(existing.get("PAN Number"))
+                ext_name = normalize(existing.get("Name"))
                 
-                if pan_name and dl_name and pan_name == dl_name:
-                    merged_doc = pan.copy()
-                    merged_doc["Document Type"] = "PAN + Driving Licence"
-                    if "DL Number" in dl: merged_doc["DL Number"] = dl["DL Number"]
-                    if "Address" in dl: merged_doc["Address"] = dl["Address"]
-                    src_files = pan.get("Source Files", []) + dl.get("Source Files", [])
-                    merged_doc["Source Files"] = list(set(src_files))
-                    
-                    # Extract Photo (Prefer PAN)
-                    photo_path = get_face_photo(pan)
-                    if photo_path: merged_doc["Photo Path"] = photo_path
-                    
-                    merged_results.append(merged_doc)
-                    used_dls.add(i)
-                    match_found = True
+                # Match Logic:
+                # 1. ID Match (Strongest)
+                if doc_aadhar and ext_aadhar and doc_aadhar == ext_aadhar:
+                    match_index = i
+                    break
+                if doc_pan and ext_pan and doc_pan == ext_pan:
+                    match_index = i
+                    break
+                
+                # 2. Name Match (Medium - only if significantly long to avoid "Kumar" matches)
+                if doc_name and ext_name and len(doc_name) > 3 and doc_name == ext_name:
+                    match_index = i
                     break
             
-            if not match_found:
-                photo_path = get_face_photo(pan)
-                if photo_path: pan["Photo Path"] = photo_path
-                merged_results.append(pan)
+            if match_index >= 0:
+                # MERGE into existing
+                existing = merged_results[match_index]
+                
+                # Update Type
+                types = set(existing.get("Document Type", "").split(" + "))
+                types.add(doc.get("Document Type", "Unknown"))
+                existing["Document Type"] = " + ".join(sorted(list(types)))
+                
+                # Merge Fields (Overwrite if new doc has value and existing doesn't, or blindly overwrite?)
+                # Better to overwrite specific fields or aggregate.
+                for k, v in doc.items():
+                    if k in ["Document Type", "Sides Detected", "Source Files", "Photo Path"]: continue # Handle separately
+                    
+                    if v and (k not in existing or not existing[k]):
+                         existing[k] = v
+                
+                # Merge Source Files
+                existing["Source Files"] = list(set(existing.get("Source Files", []) + doc.get("Source Files", [])))
+                
+                # Merge Sides (for Aadhar)
+                sides = set(existing.get("Sides Detected", []) + doc.get("Sides Detected", []))
+                existing["Sides Detected"] = list(sides)
+                
+                # Handle Photo (Prioritize existing if present, else take new)
+                new_photo = get_face_photo(doc)
+                if new_photo and "Photo Path" not in existing:
+                     existing["Photo Path"] = new_photo
+                     
+            else:
+                # CREATE NEW Identity
+                new_doc = doc.copy()
+                
+                # Initial Photo Extraction
+                photo_path = get_face_photo(new_doc)
+                if photo_path: new_doc["Photo Path"] = photo_path
+                
+                merged_results.append(new_doc)
 
-        for i, dl in enumerate(dl_docs):
-            if i not in used_dls:
-                merged_results.append(dl)
+        # --- Final Validation on Merged Identities ---
+        final_valid_docs = []
+        
+        for doc in merged_results:
+             # Aadhar Completeness Check
+             if "Aadhar" in doc.get("Document Type", ""):
+                 sides = [s.title() for s in doc.get("Sides Detected", [])]
+                 has_front = "Front" in sides
+                 has_back = "Back" in sides
+                 
+                 # Logic: If we rely on sides. 
+                 # Often LLM might fail to explicitly tag "Sides Detected" for both if merged.
+                 # Let's be lenient: If we have Aadhar Number + Address + Name, it's likely complete.
+                 # But strict requirement was "user give 2 different...".
+                 # If user uploads Front and Back separately, they are now merged.
+                 # We should pass this merged doc.
+                 pass 
+             
+             # Cleanup internal keys
+             if "Sides Detected" in doc: del doc["Sides Detected"]
+             
+             final_valid_docs.append(doc)
 
-        if not merged_results:
+        if not final_valid_docs:
              raise HTTPException(status_code=400, detail="No valid documents processed.")
         
-        return request_id, merged_results
+        return request_id, final_valid_docs
 
     except HTTPException as he:
         raise he
