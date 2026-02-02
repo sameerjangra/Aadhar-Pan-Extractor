@@ -1,85 +1,122 @@
-# Aadhar & PAN Card Extraction
+# Identity Document Extraction System
 
-A specialized tool to extract data from Aadhar and PAN cards.
+A high-performance, AI-powered tool designed to extract structured data from Indian identity documents (Aadhar Card, PAN Card, Driving Licence). Built with **FastAPI** and **Llama 3 (via Groq)**, it features intelligent identity merging and face extraction.
 
-## Features
-- **Multi-file Upload**: Supports PDF, JPG, JPEG, PNG.
-- **Auto-Classification**: Detects Aadhar vs PAN.
-- **JSON API**: Standardized JSON output for integration.
-- **Photo Extraction**: Extracts user photos and returns accessible URLs.
+## 🚀 Key Features
 
-## 🚀 API Usage
+-   **Multi-Document Support**: Seamlessly processes **Aadhar Cards**, **PAN Cards**, and **Driving Licences**.
+-   **Intelligent Identity Merging**: Automatically detects and merges separate files (e.g., Aadhar Front & Back) belonging to the same individual into a single, unified record.
+-   **Face Extraction**: Detects and extracts user photos from ID cards, determining the best candidate image.
+-   **High Precision OCR**: Utilizes **Llama 3 Vision** capabilities (via Groq) for accurate text extraction, even from complex or noisy images.
+-   **Format Flexibility**: Accepts PDF, JPG, JPEG, and PNG files.
+-   **JSON API**: Returns a clean, standardized JSON response for easy integration.
+-   **Docker Ready**: tailored for easy deployment on platforms like Render.
 
-### **Endpoint**
+## 🛠️ Technology Stack
+
+-   **Backend**: Python, FastAPI
+-   **AI/LLM**: Groq API (Llama 3)
+-   **Image Processing**: Pillow (PIL)
+-   **Containerization**: Docker
+
+## 📝 API Usage
+
+### Endpoint
 `POST /extract/`
 
-### **Request**
-- **Method**: `POST`
-- **Body**: `multipart/form-data`
-- **Key**: `files` (Upload 1 or more PDF/Image files)
+### Request
+-   **Method**: `POST`
+-   **Content-Type**: `multipart/form-data`
+-   **Body**:
+    -   `files`: List of files (images or PDFs) to process.
 
-### **Response (JSON)**
+### Example (cURL)
+```bash
+curl -X POST "http://localhost:8000/extract/" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "files=@/path/to/aadhar_front.jpg" \
+  -F "files=@/path/to/aadhar_back.jpg"
+```
+
+### Response Example
 ```json
 {
   "status": "success",
-  "request_id": "uuid-string",
+  "request_id": "c4d5e6f7-...",
   "data": [
     {
       "Document Type": "Aadhar",
-      "Name": "John Doe",
+      "Name": "Ravi Kumar",
       "Aadhar Number": "1234 5678 9012",
+      "Gender": "Male",
+      "Date of Birth": "1990-01-01",
+      "Address": "123, Main Street, New Delhi...",
       "Photo URL": "/static/faces/abc-123.jpg",
-      ...
+      "Photo Base64": "data:image/jpeg;base64,..."
     }
   ]
 }
 ```
 
-### **Example (cURL)**
-```bash
-curl -X POST "https://your-app-url.onrender.com/extract/" \
-  -H "accept: application/json" \
-  -H "Content-Type: multipart/form-data" \
-  -F "files=@/path/to/aadhar.jpg"
-```
+## ⚙️ Setup & Installation
 
-## Usage
+### Prerequisites
+-   Python 3.9+
+-   [Groq API Key](https://console.groq.com/)
 
-### Option 1: Quick Start (Recommended)
-This runs the backend with a built-in static frontend. No Node.js required.
+### Local Development
 
-1.  **Install Python dependencies**:
+1.  **Clone the repository**:
+    ```bash
+    git clone <your-repo-url>
+    cd <repo-name>
+    ```
+
+2.  **Install dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
-2.  **Run the server**:
+
+3.  **Configure Environment**:
+    Create a `.env` file in the root directory:
+    ```env
+    GROQ_API_KEY=gsk_your_actual_key_here
+    ```
+
+4.  **Run the Server**:
     ```bash
     uvicorn main:app --reload
     ```
-3.  **Open the App**:
-    - Go to [http://localhost:8000](http://localhost:8000)
 
-### Option 2: React Frontend (Advanced)
-Use this only if you want to develop the React frontend. Requires Node.js.
+5.  **Access the App**:
+    -   API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+    -   Demo UI: [http://localhost:8000](http://localhost:8000)
 
-1.  Navigate to `frontend/`:
+## 🐳 Docker Deployment
+
+1.  **Build the Image**:
     ```bash
-    cd frontend
+    docker build -t identity-extractor .
     ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-3.  Run the development server:
-    ```bash
-    npm run dev
-    ```
-    The app will be available at imports `http://localhost:5173`.
 
-## How to Use
-1.  Open the frontend URL (e.g., `http://localhost:8000`).
-2.  Upload a scanned policy PDF or Image.
-3.  Click **Extract**.
-4.  Wait for the extraction to complete (OCR + LLM can take 30-60 seconds).
-5.  Download the generated Excel report.
+2.  **Run the Container**:
+    ```bash
+    docker run -p 8000:8000 --env-file .env identity-extractor
+    ```
 
+## 📂 Project Structure
+
+```
+├── main.py             # FastAPI application entry point
+├── llm_extractor.py    # LLM interaction logic (Groq)
+├── face_extractor.py   # Face detection and cropping
+├── pdf_processor.py    # PDF to image conversion
+├── static/             # Static assets and extracted faces
+├── templates/          # HTML templates (if any)
+├── requirements.txt    # Python dependencies
+└── Dockerfile          # Docker configuration
+```
+
+## 📄 License
+MIT License
