@@ -34,7 +34,7 @@ def extract_all_documents(client: OpenAI, images_with_filenames: List[Dict[str, 
     **CRITICAL INSTRUCTIONS**:
     1. **Aadhar**: 
        - If you see Aadhar Front and Back for the same person, COMBINE them into a single record.
-       - **NEW FIELD**: `Sides Detected`. This must be a LIST of strings: ["Front"], ["Back"], or ["Front", "Back"]. Check the visual content to decide.
+       - **NEW FIELD**: `Sides Detected`. This must be a LIST of strings: ["Front"], ["Back"], or ["Front", "Back"]. Check the visual content to decide. YOU MUST RETURN THIS FOR AADHAR.
        - Extract: Name, DOB, Gender, Aadhar Number, Address (from back).
 
     2. **PAN & Driving Licence (DL)**:

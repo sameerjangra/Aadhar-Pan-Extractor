@@ -207,25 +207,46 @@ async def process_files_logic(files: List[UploadFile]):
         # --- Final Validation on Merged Identities ---
         final_valid_docs = []
         
+        # Validation State Helpers
+        has_pan = False
+        has_dl = False
+        pan_name = ""
+        dl_name = ""
+
         for doc in merged_results:
-             # Aadhar Completeness Check
-             if "Aadhar" in doc.get("Document Type", ""):
-                 sides = [s.title() for s in doc.get("Sides Detected", [])]
-                 has_front = "Front" in sides
-                 has_back = "Back" in sides
-                 
-                 # Logic: If we rely on sides. 
-                 # Often LLM might fail to explicitly tag "Sides Detected" for both if merged.
-                 # Let's be lenient: If we have Aadhar Number + Address + Name, it's likely complete.
-                 # But strict requirement was "user give 2 different...".
-                 # If user uploads Front and Back separately, they are now merged.
-                 # We should pass this merged doc.
-                 pass 
+             doc_type = doc.get("Document Type", "")
              
+             # 1. Aadhar Completeness Check
+             if "Aadhar" in doc_type:
+                 sides = [s.lower() for s in doc.get("Sides Detected", [])]
+                 has_front = "front" in sides
+                 has_back = "back" in sides
+                 
+                 if not (has_front and has_back):
+                      raise HTTPException(status_code=400, detail="Incomplete Aadhar Card. Please upload both Front and Back sides.")
+             
+             # Track PAN/DL for Pairing Check
+             if "PAN" in doc_type:
+                 has_pan = True
+                 pan_name = normalize(doc.get("Name", ""))
+             
+             if "Driving Licence" in doc_type:
+                 has_dl = True
+                 dl_name = normalize(doc.get("Name", ""))
+
              # Cleanup internal keys
              if "Sides Detected" in doc: del doc["Sides Detected"]
              
              final_valid_docs.append(doc)
+
+        # 2. PAN & DL Pairing Check
+        if (has_pan and not has_dl) or (has_dl and not has_pan):
+             raise HTTPException(status_code=400, detail="Incomplete Submission. Please upload BOTH PAN Card and Driving Licence.")
+
+        # 3. Name Mismatch Check
+        if has_pan and has_dl:
+             if pan_name != dl_name:
+                  raise HTTPException(status_code=400, detail=f"Name Mismatch. PAN Name ('{pan_name}') does not match Driving Licence Name ('{dl_name}'). Please ensure documents belong to the same person.")
 
         if not final_valid_docs:
              raise HTTPException(status_code=400, detail="No valid documents processed.")
